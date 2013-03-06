@@ -24,6 +24,8 @@
 
 #define CPUFREQ_NAME_LEN 16
 
+#define CPU_UV_MV_MAX 1500000 // VOLTAGE CONTROL INTERFACE
+#define CPU_UV_MV_MIN 750000
 
 /*********************************************************************
  *                     CPUFREQ NOTIFIER INTERFACE                    *
@@ -379,6 +381,7 @@ extern struct cpufreq_governor cpufreq_gov_adaptive;
 extern struct cpufreq_governor cpufreq_gov_pegasusq;
 #define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_pegasusq)
 #endif
+
 
 
 /*********************************************************************
