@@ -1,4 +1,4 @@
-/* linux/arch/arm/mach-exynos/cpufreq.c
+/* linux/arch/arm/mach-exynos/cpufreq.c UPDATE7 *********************************
  *
  * Copyright (c) 2010-2011 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
@@ -128,7 +128,13 @@ static int exynos_target(struct cpufreq_policy *policy,
 		ret = -EINVAL;
 		goto out;
 	}
-
+	
+	//*********** ADD ****************
+	/*prevent freqs going above max policy - originally by netarchy */
+	if(exynos_info->max_current_idx > index)
+	index = exynos_info->max_current_idx;
+	//*********** END ****************
+	
 	/* Need to set performance limitation */
 	if (!exynos_cpufreq_lock_disable && (index > g_cpufreq_lock_level))
 		index = g_cpufreq_lock_level;
@@ -143,6 +149,7 @@ static int exynos_target(struct cpufreq_policy *policy,
 #endif
 
 	freqs.new = freq_table[index].frequency;
+
 	freqs.cpu = policy->cpu;
 
 	safe_arm_volt = exynos_get_safe_armvolt(old_index, index);
@@ -287,6 +294,12 @@ int exynos_cpufreq_lock(unsigned int nId,
 
 	volt_table = exynos_info->volt_table;
 	freq_table = exynos_info->freq_table;
+	
+	 //*********** ADD ****************
+	//do not lock to higher than max_current_idx or lower than L3 -gm
+	cpufreq_level = max( min(exynos_info->max_current_idx, exynos_info->pll_safe_idx) ,
+	(int)cpufreq_level);
+	//*********** END ****************
 
 	mutex_lock(&set_cpu_freq_lock);
 	if (g_cpufreq_lock_id & (1 << nId)) {
@@ -338,6 +351,7 @@ int exynos_cpufreq_lock(unsigned int nId,
 
 		freqs.old = freq_old;
 		freqs.new = freq_new;
+
 		cpufreq_notify_transition(&freqs, CPUFREQ_PRECHANGE);
 
 		/* get the voltage value */
@@ -681,7 +695,7 @@ static int exynos_cpufreq_policy_notifier_call(struct notifier_block *this,
 				unsigned long code, void *data)
 {
 	struct cpufreq_policy *policy = data;
-
+	enum cpufreq_level_index level; /******************************************************** ADDED *****************************/
 	switch (code) {
 	case CPUFREQ_ADJUST:
 		if ((!strnicmp(policy->governor->name, "powersave", CPUFREQ_NAME_LEN))
@@ -692,9 +706,18 @@ static int exynos_cpufreq_policy_notifier_call(struct notifier_block *this,
 			exynos_cpufreq_lock_disable = true;
 		} else
 			exynos_cpufreq_lock_disable = false;
+			//*********** ADD ****************
+			exynos_cpufreq_get_level(policy->max, &level);
+			if(level!=-EINVAL) exynos_info->max_current_idx = level;
+			break;
+			//*********** END ****************
 
 	case CPUFREQ_INCOMPATIBLE:
 	case CPUFREQ_NOTIFY:
+		//*********** ADD **************** NOTHING HERE BEFORE
+		exynos_cpufreq_get_level(policy->max, &level);
+		if(level!=-EINVAL) exynos_info->max_current_idx = level;
+		//*********** END ****************
 	default:
 		break;
 	}
@@ -709,6 +732,7 @@ static struct notifier_block exynos_cpufreq_policy_notifier = {
 
 static int exynos_cpufreq_cpu_init(struct cpufreq_policy *policy)
 {
+	int ret; /* ************************************************************ ADDED ****************************/
 	policy->cur = policy->min = policy->max = exynos_getspeed(policy->cpu);
 
 	cpufreq_frequency_table_get_attr(exynos_info->freq_table, policy->cpu);
@@ -729,7 +753,15 @@ static int exynos_cpufreq_cpu_init(struct cpufreq_policy *policy)
 		cpumask_setall(policy->cpus);
 	}
 
-	return cpufreq_frequency_table_cpuinfo(policy, exynos_info->freq_table);
+	//*********** Sustituido ********
+	//return cpufreq_frequency_table_cpuinfo(policy, exynos_info->freq_table);
+	//*********** ADD ****************
+	ret = cpufreq_frequency_table_cpuinfo(policy, exynos_info->freq_table);
+	/* set safe default min and max speeds - netarchy */
+	policy->max = exynos_info->freq_table[exynos_info->max_current_idx].frequency;
+	policy->min = 200 * 1000;
+	return ret;
+	//*********** END ****************
 }
 
 static int exynos_cpufreq_reboot_notifier_call(struct notifier_block *this,
@@ -836,3 +868,93 @@ err_vdd_arm:
 	return -EINVAL;
 }
 late_initcall(exynos_cpufreq_init);
+
+
+//Voltage Interface ********************************************************************************
+
+ssize_t acpuclk_get_vdd_levels_str(char *buf)
+{
+	int i, len = 0;
+
+	if (buf)
+	{
+		for (i = exynos_info->max_support_idx; i<=exynos_info->min_support_idx; i++)
+	{
+	if(exynos_info->freq_table[i].frequency==CPUFREQ_ENTRY_INVALID) continue;
+		len += sprintf(buf + len, "%8u: %4d\n", exynos_info->freq_table[i].frequency, exynos_info->volt_table[i] / 1000);
+		}
+	}
+
+	return len;
+}
+
+void acpuclk_set_vdd(unsigned int khz, int vdd)
+{
+	int i;
+	unsigned int new_vdd;
+
+	for (i = exynos_info->max_support_idx; i<=exynos_info->min_support_idx; i++)
+	{
+		if(exynos_info->freq_table[i].frequency==CPUFREQ_ENTRY_INVALID) continue;
+			if (khz == 0)
+				new_vdd = min(max((unsigned int)(exynos_info->volt_table[i] + vdd * 1000), (unsigned int)CPU_UV_MV_MIN), (unsigned int)CPU_UV_MV_MAX);
+		else if (exynos_info->freq_table[i].frequency == khz)
+			new_vdd = min(max((unsigned int)vdd * 1000, (unsigned int)CPU_UV_MV_MIN), (unsigned int)CPU_UV_MV_MAX);
+		else continue;
+
+		exynos_info->volt_table[i] = new_vdd;
+	}
+}
+
+/* sysfs interface for UV control */
+ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf) {
+  
+  int i, len = 0;
+  if (buf)
+  {
+    for (i = exynos_info->max_support_idx; i<=exynos_info->min_support_idx; i++)
+    {
+      if(exynos_info->freq_table[i].frequency==CPUFREQ_ENTRY_INVALID) continue;
+      len += sprintf(buf + len, "%dmhz: %d mV\n", exynos_info->freq_table[i].frequency/1000,exynos_info->volt_table[i]/1000);
+     }
+    }
+    return len;
+}
+
+ssize_t store_UV_mV_table(struct cpufreq_policy *policy,
+                                      const char *buf, size_t count) {
+
+unsigned int ret = -EINVAL;
+    int i = 0;
+    int j = 0;
+    int u[5];
+    	ret = sscanf(buf, "%d %d %d %d %d", &u[0], &u[1], &u[2], &u[3], &u[4]);
+	if(ret != 5) {
+		ret = sscanf(buf, "%d %d %d %d", &u[0], &u[1], &u[2], &u[3]);
+		if(ret != 4) {
+			ret = sscanf(buf, "%d %d %d", &u[0], &u[1], &u[2]);
+			if( ret != 3) return -EINVAL;
+		}
+	}
+
+	for( i = 0; i < 5; i++ )
+	{
+		if (u[i] > CPU_UV_MV_MAX / 1000)
+		{
+			u[i] = CPU_UV_MV_MAX / 1000;
+		}
+		else if (u[i] < CPU_UV_MV_MIN / 1000)
+		{
+			u[i] = CPU_UV_MV_MIN / 1000;
+		}
+	}
+
+	for( i = 0; i < 5; i++ )
+	{
+		while(exynos_info->freq_table[i+j].frequency==CPUFREQ_ENTRY_INVALID)
+			j++;
+		exynos_info->volt_table[i+j] = u[i]*1000;
+	}
+	return count;
+}
+
