@@ -323,7 +323,9 @@ static int battery_get_curr_avg(struct battery_info *info)
 	if ((info->battery_soc <= PWROFF_SOC) &&
 		(info->battery_vcell < info->pdata->voltage_min) &&
 		(info->battery_v_diff < 0) &&
-		(info->input_current < info->pdata->chg_curr_ta)) {
+		((info->input_current < info->pdata->chg_curr_ta) &&
+		(info->input_current < info->pdata->in_curr_limit)) &&
+		(info->monitor_count >= 5)) {
 		pr_info("%s: soc(%d), vol(%d < %d), diff(%d), in_curr(%d)\n",
 					__func__, info->battery_soc,
 					(info->battery_vcell / 1000),
@@ -1820,8 +1822,11 @@ monitor_finish:
 		info->prev_battery_health != info->battery_health ||
 		info->prev_charge_virt_state != info->charge_virt_state ||
 		info->prev_battery_soc != info->battery_soc) {
-		pr_info("%s: update wakelock(%d)\n", __func__, 3 * HZ);
-		wake_lock_timeout(&info->update_wake_lock, 3 * HZ);
+//********** jebooo **********************************************************
+		//pr_info("%s: update wakelock(%d)\n", __func__, 3*HZ); 
+		//wake_lock_timeout(&info->update_wake_lock, 3*HZ);
+		pr_info("%s: update wakelock(%d)\n", __func__, HZ);
+		wake_lock_timeout(&info->update_wake_lock, HZ);
 	}
 	info->prev_cable_type = info->cable_type;
 	info->prev_battery_health = info->battery_health;
@@ -1836,11 +1841,14 @@ skip_updating_status:
 	if ((info->lpm_state == true) &&
 		(info->cable_type == POWER_SUPPLY_TYPE_BATTERY)) {
 		pr_info("%s: lpm with battery, maybe power off\n", __func__);
-		wake_lock_timeout(&info->monitor_wake_lock,
-					msecs_to_jiffies(10000));
+//********** jebooo **********************************************************
+		//wake_lock_timeout(&info->monitor_wake_lock, 
+		//			msecs_to_jiffies(10000));
+		wake_lock_timeout(&info->monitor_wake_lock, 3 * HZ);
 	} else {
-		wake_lock_timeout(&info->monitor_wake_lock,
-					msecs_to_jiffies(1000));
+		//wake_lock_timeout(&info->monitor_wake_lock,
+		//			msecs_to_jiffies(1000));
+		wake_lock_timeout(&info->monitor_wake_lock, HZ / 4);
 	}
 
 	mutex_unlock(&info->mon_lock);
@@ -2158,6 +2166,9 @@ static int samsung_usb_get_property(struct power_supply *ps,
 	if (psp != POWER_SUPPLY_PROP_ONLINE)
 		return -EINVAL;
 
+	/* re-update indicator icon */
+	battery_indicator_icon(info);
+
 	/* Set enable=1 only if the USB charger is connected */
 	val->intval = ((info->charge_virt_state !=
 				POWER_SUPPLY_STATUS_DISCHARGING) &&
@@ -2178,6 +2189,9 @@ static int samsung_ac_get_property(struct power_supply *ps,
 
 	if (psp != POWER_SUPPLY_PROP_ONLINE)
 		return -EINVAL;
+
+	/* re-update indicator icon */
+	battery_indicator_icon(info);
 
 	/* Set enable=1 only if the AC charger is connected */
 	val->intval = ((info->charge_virt_state !=
