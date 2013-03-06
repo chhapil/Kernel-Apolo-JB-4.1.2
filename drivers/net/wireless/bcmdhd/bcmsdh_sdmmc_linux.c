@@ -188,8 +188,17 @@ MODULE_DEVICE_TABLE(sdio, bcmsdh_sdmmc_ids);
 static int bcmsdh_sdmmc_suspend(struct device *pdev)
 {
 	struct sdio_func *func = dev_to_sdio_func(pdev);
-	mmc_pm_flag_t sdio_flags;
-	int ret;
+//******** PREVENT DEEPSLEEP WIFI *****************************************
+	#if 0
+		/* this needed for keep power while host suspended,
+		* and make a wakelock and prevent deep sleep! so it's disabled!
+		*/
+		mmc_pm_flag_t sdio_flags;
+		int ret;
+	#endif
+//******** PREVENT DEEPSLEEP WIFI *****************************************
+	//mmc_pm_flag_t sdio_flags;
+	//int ret;
 
 	if (func->num != 2)
 		return 0;
@@ -198,7 +207,11 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 
 	if (dhd_os_check_wakelock(bcmsdh_get_drvdata()))
 		return -EBUSY;
-
+//******** PREVENT DEEPSLEEP WIFI *****************************************		
+#if 0
+/* keep power while host suspended,
+* and make a wakelock and prevent deep sleep! so it's disabled!
+*/
 	sdio_flags = sdio_get_host_pm_caps(func);
 
 	if (!(sdio_flags & MMC_PM_KEEP_POWER)) {
@@ -212,6 +225,8 @@ static int bcmsdh_sdmmc_suspend(struct device *pdev)
 		sd_err(("%s: error while trying to keep power\n", __FUNCTION__));
 		return ret;
 	}
+#endif
+//******** PREVENT DEEPSLEEP WIFI *****************************************
 
 #if !defined(CUSTOMER_HW4)
 #if defined(OOB_INTR_ONLY)
