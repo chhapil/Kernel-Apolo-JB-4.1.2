@@ -119,10 +119,6 @@ config CPU_FREQ_DEFAULT_GOV_ADAPTIVE
 	  'adaptive' governor for latency-sensitive workloads and demanding
 	  performance.
 
-config CPU_FREQ_DEFAULT_GOV_PEGASUSQ
-	bool "pegasusq"
-	select CPU_FREQ_GOV_PEGASUSQ
-
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -266,16 +262,27 @@ config CPU_FREQ_GOV_ADAPTIVE
 config CPU_FREQ_GOV_PEGASUSQ
 	tristate "'pegasusq' cpufreq policy governor"
 
+config CPU_FREQ_GOV_LULZACTIVE
+	tristate "'lulzactive' cpufreq governor"
+	depends on CPU_FREQ
+	help
+	  'lulzactive' - a new interactive governor by Tegrak!
+
+config CPU_FREQ_GOV_SMARTASS2
+	tristate "'smartassV2' cpufreq governor"
+	depends on CPU_FREQ
+	help
+	  'smartassV2' - a "smart" governor
+	  If in doubt, say N.
+
 config CPU_FREQ_GOV_SLP
 	tristate "'slp' cpufreq policy governor"
 
-config SLP_CHECK_CPU_LOAD
-        bool "check load and frequency of cpu"
-	depends on CPU_FREQ_GOV_SLP
+config CPU_FREQ_GOV_SLEEPY
+	tristate "'sleepy' cpufreq policy governor"
 
-config SLP_GOV_DYNAMIC_PARAMS
-        bool "check SLP GOV. Dynamic Params feature"
-	depends on CPU_FREQ_GOV_SLP
+config CPU_FREQ_GOV_HYPER
+	tristate "'hyper' cpufreq policy governor"
 
 config CPU_FREQ_DVFS_MONITOR
 	bool "dvfs monitor"
