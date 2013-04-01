@@ -1,0 +1,1 @@
+cmd_drivers/frandom/built-in.o :=  rm -f drivers/frandom/built-in.o; /home/kernel/gcc-linaro-arm-linux-gnueabihf-4.7-2013.02-01-20130221_linux/bin/arm-linux-gnueabihf-ar rcsD drivers/frandom/built-in.o
