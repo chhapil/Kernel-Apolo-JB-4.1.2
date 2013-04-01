@@ -1,6 +1,7 @@
 /*
- *  drivers/cpufreq/cpufreq_pegasusq.c
+ *  drivers/cpufreq/cpufreq_slp.c
  *
+ *  Modified by @pedestre 
  *  Copyright (C)  2011 Samsung Electronics co. ltd
  *    ByungChang Cha <bc.cha@samsung.com>
  *
@@ -143,10 +144,10 @@ static unsigned int get_nr_run_avg(void)
  * It helps to keep variable names smaller, simpler
  */
 
-#define DEF_SAMPLING_DOWN_FACTOR		(2)
+#define DEF_SAMPLING_DOWN_FACTOR		(2) // multiplica el sampling rate a maxima frecuencia. Poniendo 1 se deja bajar rápidamente (defecto 2) 
 #define MAX_SAMPLING_DOWN_FACTOR		(100000)
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL		(5)
-#define DEF_FREQUENCY_UP_THRESHOLD		(85)
+#define DEF_FREQUENCY_UP_THRESHOLD		(95)
 #define DEF_FREQUENCY_MIN_SAMPLE_RATE		(10000)
 #define MIN_FREQUENCY_UP_THRESHOLD		(11)
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
@@ -156,16 +157,16 @@ static unsigned int get_nr_run_avg(void)
 
 #define DEF_MAX_CPU_LOCK			(0)
 #define DEF_MIN_CPU_LOCK			(0)
-#define DEF_CPU_UP_FREQ				(500000)
-#define DEF_CPU_DOWN_FREQ			(200000)
+#define DEF_CPU_UP_FREQ				(200000)   //Parece que no se usa ya. Lo quito del interface
+#define DEF_CPU_DOWN_FREQ			(200000)   //Parece que no se usa ya. Lo quito del interface
 #define DEF_UP_NR_CPUS				(1)
-#define DEF_CPU_UP_RATE				(10)
-#define DEF_CPU_DOWN_RATE			(20)
-#define DEF_FREQ_STEP				(40)
+#define DEF_CPU_UP_RATE				(10)	//15 Numero de ciclos que se comprueba para escalar hacia arriba
+#define DEF_CPU_DOWN_RATE			(20)		//5 Numero de ciclos que se comprueba para escalar hacia abajo
+#define DEF_FREQ_STEP				(40)   //25 porcentaje de la frecuencia que se escala hacia arriba
 #define DEF_START_DELAY				(0)
 
-#define UP_THRESHOLD_AT_MIN_FREQ		(40)
-#define FREQ_FOR_RESPONSIVENESS			(500000)
+#define UP_THRESHOLD_AT_MIN_FREQ		(80) //40  //Lo metemos en el interface. Es la load cuando estamos por debajo de la FREQ_FOR_RESPONSIVENESS
+#define FREQ_FOR_RESPONSIVENESS			(500000)   //Lo metemos en el interface. 
 
 #define HOTPLUG_DOWN_INDEX			(0)
 #define HOTPLUG_UP_INDEX			(1)
@@ -173,6 +174,7 @@ static unsigned int get_nr_run_avg(void)
 #ifdef CONFIG_MACH_MIDAS
 static int hotplug_rq[4][2] = {
 	{0, 100}, {100, 200}, {200, 300}, {300, 0}
+	//{0, 300}, {200, 300}, {200, 300}, {300, 0}
 };
 
 static int hotplug_freq[4][2] = {
@@ -180,10 +182,15 @@ static int hotplug_freq[4][2] = {
 	{200000, 500000},
 	{200000, 500000},
 	{200000, 0}
+	/*{0, 800000},
+	{500000, 800000},
+	{500000, 800000},
+	{500000, 0}*/
 };
 #else
 static int hotplug_rq[4][2] = {
 	{0, 100}, {100, 200}, {200, 300}, {300, 0}
+	//{0, 300}, {200, 300}, {200, 300}, {300, 0}
 };
 
 static int hotplug_freq[4][2] = {
@@ -191,6 +198,10 @@ static int hotplug_freq[4][2] = {
 	{200000, 500000},
 	{200000, 500000},
 	{200000, 0}
+	/*{0, 800000},
+	{500000, 800000},
+	{500000, 800000},
+	{500000, 0}*/
 };
 #endif
 
@@ -253,8 +264,10 @@ static struct dbs_tuners {
 	unsigned int freq_step;
 	unsigned int cpu_up_rate;
 	unsigned int cpu_down_rate;
-	unsigned int cpu_up_freq;
-	unsigned int cpu_down_freq;
+	//unsigned int cpu_up_freq;
+	//unsigned int cpu_down_freq;
+	unsigned int up_th_at_min_frq;
+	unsigned int freq_responsiveness;
 	unsigned int up_nr_cpus;
 	unsigned int max_cpu_lock;
 	unsigned int min_cpu_lock;
@@ -273,8 +286,10 @@ static struct dbs_tuners {
 	.freq_step = DEF_FREQ_STEP,
 	.cpu_up_rate = DEF_CPU_UP_RATE,
 	.cpu_down_rate = DEF_CPU_DOWN_RATE,
-	.cpu_up_freq = DEF_CPU_UP_FREQ,
-	.cpu_down_freq = DEF_CPU_DOWN_FREQ,
+	//.cpu_up_freq = DEF_CPU_UP_FREQ,
+	//.cpu_down_freq = DEF_CPU_DOWN_FREQ,
+	.up_th_at_min_frq = UP_THRESHOLD_AT_MIN_FREQ,
+	.freq_responsiveness = FREQ_FOR_RESPONSIVENESS,
 	.up_nr_cpus = DEF_UP_NR_CPUS,
 	.max_cpu_lock = DEF_MAX_CPU_LOCK,
 	.min_cpu_lock = DEF_MIN_CPU_LOCK,
@@ -419,10 +434,10 @@ static inline cputime64_t get_cpu_iowait_time(unsigned int cpu,
 static ssize_t show_sampling_rate_min(struct kobject *kobj,
 				      struct attribute *attr, char *buf)
 {
-	return sprintf(buf, "%u\n", min_sampling_rate);
+	return sprintf(buf, "%u\n", min_sampling_rate);	
 }
 
-define_one_global_ro(sampling_rate_min);
+define_one_global_ro(sampling_rate_min); 
 
 /* cpufreq_pegasusq Governor Tunables */
 #define show_one(file_name, object)					\
@@ -431,6 +446,7 @@ static ssize_t show_##file_name						\
 {									\
 	return sprintf(buf, "%u\n", dbs_tuners_ins.object);		\
 }
+
 show_one(sampling_rate, sampling_rate);
 show_one(io_is_busy, io_is_busy);
 show_one(up_threshold, up_threshold);
@@ -440,8 +456,10 @@ show_one(down_differential, down_differential);
 show_one(freq_step, freq_step);
 show_one(cpu_up_rate, cpu_up_rate);
 show_one(cpu_down_rate, cpu_down_rate);
-show_one(cpu_up_freq, cpu_up_freq);
-show_one(cpu_down_freq, cpu_down_freq);
+//show_one(cpu_up_freq, cpu_up_freq);
+//show_one(cpu_down_freq, cpu_down_freq);
+show_one(up_th_at_min_frq, up_th_at_min_frq);
+show_one(freq_responsiveness, freq_responsiveness);
 show_one(up_nr_cpus, up_nr_cpus);
 show_one(max_cpu_lock, max_cpu_lock);
 show_one(min_cpu_lock, min_cpu_lock);
@@ -475,45 +493,45 @@ static ssize_t store_##file_name##_##num_core##_##up_down		\
 
 show_hotplug_param(hotplug_freq, 1, 1);
 show_hotplug_param(hotplug_freq, 2, 0);
-show_hotplug_param(hotplug_freq, 2, 1);
+/*show_hotplug_param(hotplug_freq, 2, 1);
 show_hotplug_param(hotplug_freq, 3, 0);
 show_hotplug_param(hotplug_freq, 3, 1);
-show_hotplug_param(hotplug_freq, 4, 0);
+show_hotplug_param(hotplug_freq, 4, 0);*/
 
 show_hotplug_param(hotplug_rq, 1, 1);
 show_hotplug_param(hotplug_rq, 2, 0);
-show_hotplug_param(hotplug_rq, 2, 1);
+/*show_hotplug_param(hotplug_rq, 2, 1);
 show_hotplug_param(hotplug_rq, 3, 0);
 show_hotplug_param(hotplug_rq, 3, 1);
-show_hotplug_param(hotplug_rq, 4, 0);
+show_hotplug_param(hotplug_rq, 4, 0);*/
 
 store_hotplug_param(hotplug_freq, 1, 1);
 store_hotplug_param(hotplug_freq, 2, 0);
-store_hotplug_param(hotplug_freq, 2, 1);
+/*store_hotplug_param(hotplug_freq, 2, 1);
 store_hotplug_param(hotplug_freq, 3, 0);
 store_hotplug_param(hotplug_freq, 3, 1);
-store_hotplug_param(hotplug_freq, 4, 0);
+store_hotplug_param(hotplug_freq, 4, 0);*/
 
 store_hotplug_param(hotplug_rq, 1, 1);
 store_hotplug_param(hotplug_rq, 2, 0);
-store_hotplug_param(hotplug_rq, 2, 1);
+/*store_hotplug_param(hotplug_rq, 2, 1);
 store_hotplug_param(hotplug_rq, 3, 0);
 store_hotplug_param(hotplug_rq, 3, 1);
-store_hotplug_param(hotplug_rq, 4, 0);
+store_hotplug_param(hotplug_rq, 4, 0);*/
 
 define_one_global_rw(hotplug_freq_1_1);
 define_one_global_rw(hotplug_freq_2_0);
-define_one_global_rw(hotplug_freq_2_1);
+/*define_one_global_rw(hotplug_freq_2_1);
 define_one_global_rw(hotplug_freq_3_0);
 define_one_global_rw(hotplug_freq_3_1);
-define_one_global_rw(hotplug_freq_4_0);
+define_one_global_rw(hotplug_freq_4_0);*/
 
 define_one_global_rw(hotplug_rq_1_1);
 define_one_global_rw(hotplug_rq_2_0);
-define_one_global_rw(hotplug_rq_2_1);
+/*define_one_global_rw(hotplug_rq_2_1);
 define_one_global_rw(hotplug_rq_3_0);
 define_one_global_rw(hotplug_rq_3_1);
-define_one_global_rw(hotplug_rq_4_0);
+define_one_global_rw(hotplug_rq_4_0);*/
 
 static ssize_t store_sampling_rate(struct kobject *a, struct attribute *b,
 				   const char *buf, size_t count)
@@ -657,7 +675,7 @@ static ssize_t store_cpu_down_rate(struct kobject *a, struct attribute *b,
 	return count;
 }
 
-static ssize_t store_cpu_up_freq(struct kobject *a, struct attribute *b,
+/*static ssize_t store_cpu_up_freq(struct kobject *a, struct attribute *b,
 				 const char *buf, size_t count)
 {
 	unsigned int input;
@@ -667,9 +685,9 @@ static ssize_t store_cpu_up_freq(struct kobject *a, struct attribute *b,
 		return -EINVAL;
 	dbs_tuners_ins.cpu_up_freq = min(input, dbs_tuners_ins.max_freq);
 	return count;
-}
+}*/
 
-static ssize_t store_cpu_down_freq(struct kobject *a, struct attribute *b,
+/*static ssize_t store_cpu_down_freq(struct kobject *a, struct attribute *b,
 				   const char *buf, size_t count)
 {
 	unsigned int input;
@@ -678,6 +696,33 @@ static ssize_t store_cpu_down_freq(struct kobject *a, struct attribute *b,
 	if (ret != 1)
 		return -EINVAL;
 	dbs_tuners_ins.cpu_down_freq = max(input, dbs_tuners_ins.min_freq);
+	return count;
+}*/
+
+static ssize_t store_up_th_at_min_frq(struct kobject *a, struct attribute *b,
+				  const char *buf, size_t count)
+{
+	unsigned int input;
+	int ret;
+	ret = sscanf(buf, "%u", &input);
+
+	if (ret != 1 || input > MAX_FREQUENCY_UP_THRESHOLD ||
+	    input < MIN_FREQUENCY_UP_THRESHOLD) {
+		return -EINVAL;
+	}
+	dbs_tuners_ins.up_th_at_min_frq = input;
+	return count;
+}
+
+static ssize_t store_freq_responsiveness(struct kobject *a, struct attribute *b,
+				   const char *buf, size_t count)
+{
+	unsigned int input;
+	int ret;
+	ret = sscanf(buf, "%u", &input);
+	if (ret != 1)
+		return -EINVAL;
+	dbs_tuners_ins.freq_responsiveness = max(input, dbs_tuners_ins.min_freq);
 	return count;
 }
 
@@ -771,8 +816,10 @@ define_one_global_rw(down_differential);
 define_one_global_rw(freq_step);
 define_one_global_rw(cpu_up_rate);
 define_one_global_rw(cpu_down_rate);
-define_one_global_rw(cpu_up_freq);
-define_one_global_rw(cpu_down_freq);
+//define_one_global_rw(cpu_up_freq);
+//define_one_global_rw(cpu_down_freq);
+define_one_global_rw(up_th_at_min_frq);
+define_one_global_rw(freq_responsiveness);
 define_one_global_rw(up_nr_cpus);
 define_one_global_rw(max_cpu_lock);
 define_one_global_rw(min_cpu_lock);
@@ -790,8 +837,10 @@ static struct attribute *dbs_attributes[] = {
 	&freq_step.attr,
 	&cpu_up_rate.attr,
 	&cpu_down_rate.attr,
-	&cpu_up_freq.attr,
-	&cpu_down_freq.attr,
+	//&cpu_up_freq.attr,
+	//&cpu_down_freq.attr,
+	&up_th_at_min_frq.attr,
+	&freq_responsiveness.attr,
 	&up_nr_cpus.attr,
 	/* priority: hotplug_lock > max_cpu_lock > min_cpu_lock
 	   Exception: hotplug_lock on early_suspend uses min_cpu_lock */
@@ -801,16 +850,16 @@ static struct attribute *dbs_attributes[] = {
 	&dvfs_debug.attr,
 	&hotplug_freq_1_1.attr,
 	&hotplug_freq_2_0.attr,
-	&hotplug_freq_2_1.attr,
+	/*&hotplug_freq_2_1.attr,
 	&hotplug_freq_3_0.attr,
 	&hotplug_freq_3_1.attr,
-	&hotplug_freq_4_0.attr,
+	&hotplug_freq_4_0.attr,*/
 	&hotplug_rq_1_1.attr,
 	&hotplug_rq_2_0.attr,
-	&hotplug_rq_2_1.attr,
+	/*&hotplug_rq_2_1.attr,
 	&hotplug_rq_3_0.attr,
 	&hotplug_rq_3_1.attr,
-	&hotplug_rq_4_0.attr,
+	&hotplug_rq_4_0.attr,*/
 	NULL
 };
 
@@ -1245,8 +1294,8 @@ static struct notifier_block reboot_notifier = {
 
 #ifdef CONFIG_HAS_EARLYSUSPEND
 static struct early_suspend early_suspend;
-unsigned int Prev_freq_step;
-unsigned int Prev_sampling_rate;
+unsigned int Prev_freq_step; 
+unsigned int Prev_sampling_rate; 
 static void cpufreq_pegasusq_early_suspend(struct early_suspend *h)
 {
 #if EARLYSUSPEND_HOTPLUGLOCK
