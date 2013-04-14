@@ -108,11 +108,11 @@ diff -rupN GT-I9100_Update4-Kernel/arch/arm/mach-exynos/cpufreq-4210.c MyKernel/
 -REGULATOR_INIT(ldo18, "TOUCH_LED_3.3V", 3000000, 3000000, 0,
 -		REGULATOR_CHANGE_STATUS, 1);
 -#else
--REGULATOR_INIT(ldo18, "TOUCH_LED_3.3V", 2700000, 3000000, 0,
+-REGULATOR_INIT(ldo18, "TOUCH_LED_3.3V", 2500000, 3300000, 0,
 +REGULATOR_INIT(ldo18, "TOUCH_LED_3.3V", 3300000, 3300000, 0,
 +		REGULATOR_CHANGE_STATUS, 1);
 +#else
-+REGULATOR_INIT(ldo18, "TOUCH_LED_3.3V", 3000000, 3300000, 0,
++REGULATOR_INIT(ldo18, "TOUCH_LED_3.3V", 2500000, 3300000, 0,
 @@ -2798,12 +2798,12 @@
  static struct regulator_init_data buck5_init_data = {
  	.constraints	= {
