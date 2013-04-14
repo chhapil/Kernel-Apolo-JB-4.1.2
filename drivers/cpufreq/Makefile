@@ -18,6 +18,8 @@ obj-$(CONFIG_CPU_FREQ_GOV_PEGASUSQ)	+= cpufreq_hotplug.o
 obj-$(CONFIG_CPU_FREQ_GOV_SLP)		+= cpufreq_slp.o
 obj-$(CONFIG_CPU_FREQ_GOV_SLEEPY)	+= cpufreq_sleepy.o
 obj-$(CONFIG_CPU_FREQ_GOV_HYPER)	+= cpufreq_hyper.o
+obj-$(CONFIG_CPU_FREQ_GOV_SLP)		+= cpufreq_intellidemand.o
+
 
 # CPUfreq cross-arch helpers
 obj-$(CONFIG_CPU_FREQ_TABLE)		+= freq_table.o
