@@ -19,6 +19,7 @@ obj-$(CONFIG_CPU_FREQ_GOV_SLP)		+= cpufreq_slp.o
 obj-$(CONFIG_CPU_FREQ_GOV_SLEEPY)	+= cpufreq_sleepy.o
 obj-$(CONFIG_CPU_FREQ_GOV_HYPER)	+= cpufreq_hyper.o
 obj-$(CONFIG_CPU_FREQ_GOV_SLP)		+= cpufreq_intellidemand.o
+obj-$(CONFIG_CPU_FREQ_GOV_ZZMOOVE)	+= cpufreq_zzmoove.o
 
 
 # CPUfreq cross-arch helpers
