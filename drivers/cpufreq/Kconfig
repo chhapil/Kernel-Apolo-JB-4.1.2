@@ -240,10 +240,17 @@ config CPU_FREQ_GOV_CONSERVATIVE
 
 config CPU_FREQ_GOV_ZZMOOVE
 	bool "zzmoove"
-	select CPU_FREQ_GOV_ZZMOOVE
-	select CPU_FREQ_GOV_PERFORMANCE
+	depends on CPU_FREQ
 	help
 	Use the CPUFreq governor 'zzmoove' as default, using predefined
+	frequency lookup tables and optimized scaling triggers instead of
+	% frequency steps to get smooth up/downscaling dependant on CPU load.
+
+config CPU_FREQ_GOV_INTERACTIVEX
+	bool "interactivex"
+	depends on CPU_FREQ
+	help
+	Use the CPUFreq governor 'interactivex' as default, using predefined
 	frequency lookup tables and optimized scaling triggers instead of
 	% frequency steps to get smooth up/downscaling dependant on CPU load.
 
