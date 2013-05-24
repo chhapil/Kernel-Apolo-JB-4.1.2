@@ -2039,34 +2039,36 @@ static irqreturn_t mxt224_irq_thread(int irq, void *ptr)
 				}
 			}
 		}
-#ifdef CLEAR_MEDIAN_FILTER_ERROR
-		if ((msg[0] == 18) && (data->family_id == 0x81)) {
-			if ((msg[4] & 0x5) == 0x5) {
-				printk(KERN_ERR
-				       "[TSP] median filter state error!!!\n");
-				median_err_setting();
-			} else if ((msg[4] & 0x4) == 0x4) {
-				copy_data->read_ta_status(&ta_status_check);
-				if ((!ta_status_check)
-				    && (copy_data->noise_median.mferr_setting
-				    == false)
-				    && (copy_data->noise_median.median_on_flag
-				    == false)) {
+#if 0 
+	#ifdef CLEAR_MEDIAN_FILTER_ERROR
+			if ((msg[0] == 18) && (data->family_id == 0x81)) {
+				if ((msg[4] & 0x5) == 0x5) {
 					printk(KERN_ERR
-					       "[TSP] median filter ON!!!\n");
-					ret =
-					    get_object_info(copy_data,
-						    TOUCH_MULTITOUCHSCREEN_T9,
-							    &size_one,
-							    &obj_address);
-					value = 0;
-					write_mem(copy_data, obj_address + 34,
-						  1, &value);
-					copy_data->noise_median.median_on_flag
-						= true;
+					       "[TSP] median filter state error!!!\n");
+					median_err_setting();
+				} else if ((msg[4] & 0x4) == 0x4) {
+					copy_data->read_ta_status(&ta_status_check);
+					if ((!ta_status_check)
+					    && (copy_data->noise_median.mferr_setting
+					    == false)
+					    && (copy_data->noise_median.median_on_flag
+					    == false)) {
+						printk(KERN_ERR
+						       "[TSP] median filter ON!!!\n");
+						ret =
+						    get_object_info(copy_data,
+							    TOUCH_MULTITOUCHSCREEN_T9,
+								    &size_one,
+								    &obj_address);
+						value = 0;
+						write_mem(copy_data, obj_address + 34,
+							  1, &value);
+						copy_data->noise_median.median_on_flag
+							= true;
+					}
 				}
 			}
-		}
+	#endif
 #endif
 		if (msg[0] > 1 && msg[0] < 12) {
 
@@ -3566,7 +3568,7 @@ static ssize_t slide2wake_store(struct device *dev,
 		return -EINVAL;
 
 	s2w_enabled = value ? true : false;
-	//mxt224_gpio_sleep_mode(s2w_enabled);
+	mxt224_gpio_sleep_mode(s2w_enabled);
 
 	return size;
 }
@@ -4213,7 +4215,7 @@ static int __devinit mxt224_probe(struct i2c_client *client,
 	x_lo = pdata->max_x / 10 * 1;	/* 10% display width */
 	x_hi = pdata->max_x / 10 * 9;	/* 90% display width */
 	y_tolerance = pdata->max_y / 10 * 3 / 2;
-	//mxt224_gpio_sleep_mode(s2w_enabled);
+	mxt224_gpio_sleep_mode(s2w_enabled);
 
 	/* reset the touch IC. */
 	ret = mxt224_reset(data);
