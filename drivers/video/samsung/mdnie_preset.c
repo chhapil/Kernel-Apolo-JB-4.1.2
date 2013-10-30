@@ -121,7 +121,7 @@ static ssize_t mdnie_preset_store(struct device *dev, struct device_attribute *a
 					const char *buf, size_t count)
 {
 	unsigned int ret = -EINVAL;
-	unsigned int val = 0;
+	unsigned int val = 0; //Por defecto valores de hardcore
 
 	// read value from input buffer
 	ret = sscanf(buf, "%d", &val);
@@ -132,7 +132,7 @@ static ssize_t mdnie_preset_store(struct device *dev, struct device_attribute *a
 		// store preset in global variable
 		mdnie_preset = val;
 
-		if (mdnie_preset == 0) // original Samsung mdnie settings
+		if (mdnie_preset == 1) // original Samsung mdnie settings
 		{
 			// update all mdnie control tables with the given preset
 			update_mdnie_array("tune_dynamic_gallery", tune_dynamic_gallery_sm);
@@ -151,8 +151,8 @@ static ssize_t mdnie_preset_store(struct device *dev, struct device_attribute *a
 			update_mdnie_array("tune_natural_ui", tune_natural_ui_sm);
 			update_mdnie_array("tune_natural_video", tune_natural_video_sm);
 			update_mdnie_array("tune_natural_vt", tune_natural_vt_sm);
-			update_mdnie_array("tune_camera", tune_camera_sm);
-			update_mdnie_array("tune_camera_outdoor", tune_camera_outdoor_sm);
+			update_mdnie_array("tune_camera", tune_camera_hr ); //tune_camera_sm
+			update_mdnie_array("tune_camera_outdoor", tune_camera_outdoor_hr); //tune_camera_outdoor_sm
 			update_mdnie_array("tune_cold", tune_cold_sm);
 			update_mdnie_array("tune_cold_outdoor", tune_cold_outdoor_sm);
 			update_mdnie_array("tune_normal_outdoor", tune_normal_outdoor_sm);
@@ -168,7 +168,7 @@ static ssize_t mdnie_preset_store(struct device *dev, struct device_attribute *a
 
 		}
 
-		if (mdnie_preset == 1) // Hardcore speedmod mdnie settings
+		if (mdnie_preset == 0) // Hardcore speedmod mdnie settings
 		{
 			// update all mdnie control tables with the given preset
 			update_mdnie_array("tune_dynamic_gallery", tune_dynamic_gallery_hr);
@@ -200,7 +200,7 @@ static ssize_t mdnie_preset_store(struct device *dev, struct device_attribute *a
 							tune_standard_ui_hr, tune_natural_ui_hr);
 
 			// print debug info
-			printk("Boeffla-kernel: mdnie preset set to Hardcore speedmod\n");
+			printk("Apolo-kernel: mdnie preset set to Hardcore speedmod\n");
 		}
 		
 	}
@@ -271,4 +271,6 @@ static void mdnie_preset_exit(void)
 
 module_init(mdnie_preset_init);
 module_exit(mdnie_preset_exit);
+
+
 
