@@ -2,13 +2,13 @@
  * BCMSDH Function Driver for the native SDIO/MMC driver in the Linux Kernel
  *
  * Copyright (C) 1999-2012, Broadcom Corporation
- *
+ * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- *
+ * 
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,12 +16,12 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- *
+ * 
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: bcmsdh_sdmmc.c 396613 2013-04-14 11:19:57Z $
+ * $Id: bcmsdh_sdmmc.c 401625 2013-05-13 03:24:35Z $
  */
 #include <typedefs.h>
 
@@ -176,14 +176,12 @@ sdioh_attach(osl_t *osh, void *bar0, uint irq)
 
 		sd->client_block_size[1] = 64;
 		err_ret = sdio_set_block_size(gInstance->func[1], 64);
+		if (err_ret) {
+			sd_err(("bcmsdh_sdmmc: Failed to set F1 blocksize\n"));
+		}
 
 		/* Release host controller F1 */
 		sdio_release_host(gInstance->func[1]);
-		if (err_ret) {
-			sd_err(("bcmsdh_sdmmc: Failed to set F1 blocksize\n"));
-			MFREE(sd->osh, sd, sizeof(sdioh_info_t));
-			return NULL;
-		}
 	} else {
 		sd_err(("%s:gInstance->func[1] is null\n", __FUNCTION__));
 		MFREE(sd->osh, sd, sizeof(sdioh_info_t));
@@ -196,15 +194,13 @@ sdioh_attach(osl_t *osh, void *bar0, uint irq)
 
 		sd->client_block_size[2] = sd_f2_blocksize;
 		err_ret = sdio_set_block_size(gInstance->func[2], sd_f2_blocksize);
-
-		/* Release host controller F2 */
-		sdio_release_host(gInstance->func[2]);
 		if (err_ret) {
 			sd_err(("bcmsdh_sdmmc: Failed to set F2 blocksize to %d\n",
 				sd_f2_blocksize));
-			MFREE(sd->osh, sd, sizeof(sdioh_info_t));
-			return NULL;
 		}
+
+		/* Release host controller F2 */
+		sdio_release_host(gInstance->func[2]);
 	} else {
 		sd_err(("%s:gInstance->func[2] is null\n", __FUNCTION__));
 		MFREE(sd->osh, sd, sizeof(sdioh_info_t));
@@ -422,17 +418,17 @@ const bcm_iovar_t sdioh_iovars[] = {
 	{"sd_blockmode", IOV_BLOCKMODE, 0,	IOVT_BOOL,	0 },
 	{"sd_blocksize", IOV_BLOCKSIZE, 0,	IOVT_UINT32,	0 }, /* ((fn << 16) | size) */
 	{"sd_dma",	IOV_DMA,	0,	IOVT_BOOL,	0 },
-	{"sd_ints",	IOV_USEINTS,	0,	IOVT_BOOL,	0 },
+	{"sd_ints", 	IOV_USEINTS,	0,	IOVT_BOOL,	0 },
 	{"sd_numints",	IOV_NUMINTS,	0,	IOVT_UINT32,	0 },
 	{"sd_numlocalints", IOV_NUMLOCALINTS, 0, IOVT_UINT32,	0 },
 	{"sd_hostreg",	IOV_HOSTREG,	0,	IOVT_BUFFER,	sizeof(sdreg_t) },
-	{"sd_devreg",	IOV_DEVREG,	0,	IOVT_BUFFER,	sizeof(sdreg_t) },
+	{"sd_devreg",	IOV_DEVREG, 	0,	IOVT_BUFFER,	sizeof(sdreg_t) },
 	{"sd_divisor",	IOV_DIVISOR,	0,	IOVT_UINT32,	0 },
 	{"sd_power",	IOV_POWER,	0,	IOVT_UINT32,	0 },
 	{"sd_clock",	IOV_CLOCK,	0,	IOVT_UINT32,	0 },
-	{"sd_mode",	IOV_SDMODE,	0,	IOVT_UINT32,	100},
+	{"sd_mode", 	IOV_SDMODE, 	0,	IOVT_UINT32,	100},
 	{"sd_highspeed", IOV_HISPEED,	0,	IOVT_UINT32,	0 },
-	{"sd_rxchain",  IOV_RXCHAIN,    0,	IOVT_BOOL,	0 },
+	{"sd_rxchain",  IOV_RXCHAIN,    0, 	IOVT_BOOL,	0 },
 	{NULL, 0, 0, 0, 0 }
 };
 
@@ -900,9 +896,11 @@ sdioh_request_byte(sdioh_info_t *sd, uint rw, uint func, uint regaddr, uint8 *by
 	}
 
 	if (err_ret) {
-		if (regaddr != 0x1001F && err_ret != -110)
+		if ((regaddr == 0x1001F) && (err_ret == -110)) {
+		} else {
 			sd_err(("bcmsdh_sdmmc: Failed to %s byte F%d:@0x%05x=%02x, Err: %d\n",
 				rw ? "Write" : "Read", func, regaddr, *byte, err_ret));
+		}
 	}
 
 	return ((err_ret == 0) ? SDIOH_API_RC_SUCCESS : SDIOH_API_RC_FAIL);
