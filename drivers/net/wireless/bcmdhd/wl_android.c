@@ -2,13 +2,13 @@
  * Linux cfg80211 driver - Android related functions
  *
  * Copyright (C) 1999-2012, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -16,12 +16,12 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
  *
- * $Id: wl_android.c 406708 2013-06-10 09:50:18Z $
+ * $Id: wl_android.c 400963 2013-05-08 05:11:51Z $
  */
 
 #include <linux/module.h>
@@ -79,9 +79,8 @@
 #endif
 #define CMD_P2P_SD_OFFLOAD		"P2P_SD_"
 #define CMD_P2P_SET_PS		"P2P_SET_PS"
-#define CMD_SET_AP_WPS_P2P_IE 		"SET_AP_WPS_P2P_IE"
+#define CMD_SET_AP_WPS_P2P_IE		"SET_AP_WPS_P2P_IE"
 #define CMD_SETROAMMODE		"SETROAMMODE"
-#define CMD_SETIBSSBEACONOUIDATA	"SETIBSSBEACONOUIDATA"
 
 #ifdef CUSTOMER_HW4
 #ifdef SUPPORT_AUTO_CHANNEL
@@ -102,9 +101,11 @@
 #ifdef SUPPORT_TRIGGER_HANG_EVENT
 #define CMD_TEST_FORCE_HANG		"TEST_FORCE_HANG"
 #endif /* SUPPORT_TRIGGER_HANG_EVENT */
-
 #ifdef SUPPORT_LTECX
-#define CMD_LTECX_SET		"LTECOEX"
+#define CMD_LTECX_CHAN_BITMAP		"LTECX_CHAN_BITMAP"
+#define CMD_LTECX_WLANRX_PROT		"LTECX_WLANRX_PROT"
+#define CMD_LTECX_LTERX_PROT		"LTECX_LTERX_PROT"
+#define CMD_LTECX_LTETX_ADV			"LTECX_LTETX_ADV"
 #endif /* SUPPORT_LTECX */
 #endif /* CUSTOMER_HW4 */
 
@@ -123,7 +124,7 @@
 
 #define PNO_TLV_PREFIX			'S'
 #define PNO_TLV_VERSION			'1'
-#define PNO_TLV_SUBVERSION 		'2'
+#define PNO_TLV_SUBVERSION		'2'
 #define PNO_TLV_RESERVED		'0'
 #define PNO_TLV_TYPE_SSID_IE		'S'
 #define PNO_TLV_TYPE_TIME		'T'
@@ -1625,41 +1626,75 @@ wl_android_ch_res_rl(struct net_device *dev, bool change)
 }
 
 #ifdef SUPPORT_LTECX
-#define DEFAULT_WLANRX_PROT	1
-#define DEFAULT_LTERX_PROT	0
-#define DEFAULT_LTETX_ADV	1200
-
 static int
-wl_android_set_ltecx(struct net_device *dev, const char* string_num)
+wl_android_set_ltecx_chan_bitmap(struct net_device *dev, const char* string_num)
 {
 	uint16 chan_bitmap;
 	int ret;
 
 	chan_bitmap = bcm_strtoul(string_num, NULL, 16);
 
-	DHD_INFO(("%s : LTECOEX 0x%x\n", __FUNCTION__, chan_bitmap));
+	DHD_INFO(("%s : LTECX_CHAN_BITMAP = 0x%x\n", __FUNCTION__, chan_bitmap));
 
-	if (chan_bitmap) {
-		ret = wldev_iovar_setint(dev, "mws_coex_bitmap", chan_bitmap);
-		if (ret < 0)
-			DHD_ERROR(("mws_coex_bitmap error %d\n", ret));
+	ret = wldev_iovar_setint(dev, "mws_coex_bitmap", chan_bitmap);
 
-		ret = wldev_iovar_setint(dev, "mws_wlanrx_prot", DEFAULT_WLANRX_PROT);
-		if (ret < 0)
-			DHD_ERROR(("mws_wlanrx_prot error %d\n", ret));
+	if (ret < 0)
+		DHD_ERROR(("LTECX_CHAN_BITMAP error %d\n", ret));
 
-		ret = wldev_iovar_setint(dev, "mws_lterx_prot", DEFAULT_LTERX_PROT);
-		if (ret < 0)
-			DHD_ERROR(("mws_lterx_prot error %d\n", ret));
+	return 1;
+}
 
-		ret = wldev_iovar_setint(dev, "mws_ltetx_adv", DEFAULT_LTETX_ADV);
-		if (ret < 0)
-			DHD_ERROR(("mws_ltetx_adv error %d\n", ret));
-	} else {
-		ret = wldev_iovar_setint(dev, "mws_coex_bitmap", chan_bitmap);
-		if (ret < 0)
-			DHD_ERROR(("LTECX_CHAN_BITMAP error %d\n", ret));
-	}
+static int
+wl_android_set_wlanrx_protection(struct net_device *dev, const char* string_num)
+{
+	uint16 wlanrx_prot;
+	int ret;
+
+	wlanrx_prot = bcm_atoi(string_num);
+
+	DHD_INFO(("%s : LTECX_WLANRX_PROT = %d\n", __FUNCTION__, wlanrx_prot));
+
+	ret = wldev_iovar_setint(dev, "mws_wlanrx_prot", wlanrx_prot);
+
+	if (ret < 0)
+		DHD_ERROR(("LTECX_WLANRX_PROT error %d\n", ret));
+
+	return 1;
+}
+
+static int
+wl_android_set_lterx_protection(struct net_device *dev, const char* string_num)
+{
+	uint16 lterx_prot;
+	int ret;
+
+	lterx_prot = bcm_atoi(string_num);
+
+	DHD_INFO(("%s : LTECX_LTERX_PROT = %d\n", __FUNCTION__, lterx_prot));
+
+	ret = wldev_iovar_setint(dev, "mws_lterx_prot", lterx_prot);
+
+	if (ret < 0)
+		DHD_ERROR(("LTECX_LTERX_PROT error %d\n", ret));
+
+	return 1;
+}
+
+static int
+wl_android_set_ltetx_adv(struct net_device *dev, const char* string_num)
+{
+	uint16 ltetx_adv;
+	int ret;
+
+	ltetx_adv = bcm_atoi(string_num);
+
+	DHD_INFO(("%s : LTECX_LTETX_ADV = %d\n", __FUNCTION__, ltetx_adv));
+
+	ret = wldev_iovar_setint(dev, "mws_ltetx_adv", ltetx_adv);
+
+	if (ret < 0)
+		DHD_ERROR(("LTECX_LTETX_ADV error %d\n", ret));
+
 	return 1;
 }
 #endif /* SUPPORT_LTECX */
@@ -1687,76 +1722,9 @@ int wl_android_set_roam_mode(struct net_device *dev, char *command, int total_le
 	return 0;
 }
 
-int wl_android_set_ibss_beacon_ouidata(struct net_device *dev, char *command, int total_len)
-{
-	char ie_buf[VNDR_IE_MAX_LEN];
-	char smbuf[WLC_IOCTL_SMLEN];
-	char hex[] = "XX";
-	char *pcmd = NULL;
-	int ielen = 0, datalen = 0, idx = 0, tot_len = 0;
-	vndr_ie_setbuf_t *vndr_ie = NULL;
-	s32 iecount;
-	uint32 pktflag;
-	u16 kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
-	s32 err = BCME_OK;
-
-	pcmd = command + strlen(CMD_SETIBSSBEACONOUIDATA) + 1;
-	for (idx = 0; idx < DOT11_OUI_LEN; idx++) {
-		hex[0] = *pcmd++;
-		hex[1] = *pcmd++;
-		ie_buf[idx] =  (uint8)simple_strtoul(hex, NULL, 16);
-	}
-	pcmd++;
-	while ((*pcmd != '\0') && (idx < VNDR_IE_MAX_LEN)) {
-		hex[0] = *pcmd++;
-		hex[1] = *pcmd++;
-		ie_buf[idx++] =  (uint8)simple_strtoul(hex, NULL, 16);
-		datalen++;
-	}
-	tot_len = sizeof(vndr_ie_setbuf_t) + (datalen - 1);
-	vndr_ie = (vndr_ie_setbuf_t *) kzalloc(tot_len, kflags);
-	if (!vndr_ie) {
-		WL_ERR(("IE memory alloc failed\n"));
-		return -ENOMEM;
-	}
-	/* Copy the vndr_ie SET command ("add"/"del") to the buffer */
-	strncpy(vndr_ie->cmd, "add", VNDR_IE_CMD_LEN - 1);
-	vndr_ie->cmd[VNDR_IE_CMD_LEN - 1] = '\0';
-
-	/* Set the IE count - the buffer contains only 1 IE */
-	iecount = htod32(1);
-	memcpy((void *)&vndr_ie->vndr_ie_buffer.iecount, &iecount, sizeof(s32));
-
-	/* Set packet flag to indicate that BEACON's will contain this IE */
-	pktflag = htod32(VNDR_IE_BEACON_FLAG | VNDR_IE_PRBRSP_FLAG);
-	memcpy((void *)&vndr_ie->vndr_ie_buffer.vndr_ie_list[0].pktflag, &pktflag,
-		sizeof(u32));
-	/* Set the IE ID */
-	vndr_ie->vndr_ie_buffer.vndr_ie_list[0].vndr_ie_data.id = (uchar) DOT11_MNG_PROPR_ID;
-
-	memcpy(&vndr_ie->vndr_ie_buffer.vndr_ie_list[0].vndr_ie_data.oui, &ie_buf,
-		DOT11_OUI_LEN);
-	memcpy(&vndr_ie->vndr_ie_buffer.vndr_ie_list[0].vndr_ie_data.data,
-		&ie_buf[DOT11_OUI_LEN], datalen);
-
-	ielen = DOT11_OUI_LEN + datalen;
-	vndr_ie->vndr_ie_buffer.vndr_ie_list[0].vndr_ie_data.len = (uchar) ielen;
-	err = wldev_iovar_setbuf(dev, "ie", vndr_ie, tot_len, smbuf, WLC_IOCTL_SMLEN, NULL);
-	if (err != BCME_OK)
-		err = -EINVAL;
-	if (vndr_ie)
-		kfree(vndr_ie);
-	return err;
-}
-
 int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 {
-#ifdef CUSTOMER_HW4
-/* DO NOT CHANGE THIS: Samsung JBP branch requires 16KB buffer size */
-#define PRIVATE_COMMAND_MAX_LEN	16384
-#else
 #define PRIVATE_COMMAND_MAX_LEN	8192
-#endif
 	int ret = 0;
 	char *command = NULL;
 	int bytes_written = 0;
@@ -2120,20 +2088,27 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		bytes_written = wl_android_ch_res_rl(net, true);
 	else if (strnicmp(command, CMD_RESTORE_RL, strlen(CMD_RESTORE_RL)) == 0)
 		bytes_written = wl_android_ch_res_rl(net, false);
-
 #ifdef SUPPORT_LTECX
-	else if (strnicmp(command, CMD_LTECX_SET, strlen(CMD_LTECX_SET)) == 0) {
-		int skip = strlen(CMD_LTECX_SET) + 1;
-		bytes_written = wl_android_set_ltecx(net, (const char*)command+skip);
+	else if (strnicmp(command, CMD_LTECX_CHAN_BITMAP, strlen(CMD_LTECX_CHAN_BITMAP)) == 0) {
+		int skip = strlen(CMD_LTECX_CHAN_BITMAP) + 3;
+		bytes_written = wl_android_set_ltecx_chan_bitmap(net, (const char*)command+skip);
+	}
+	else if (strnicmp(command, CMD_LTECX_WLANRX_PROT, strlen(CMD_LTECX_WLANRX_PROT)) == 0) {
+		int skip = strlen(CMD_LTECX_WLANRX_PROT) + 3;
+		bytes_written = wl_android_set_wlanrx_protection(net, (const char*)command+skip);
+	}
+	else if (strnicmp(command, CMD_LTECX_LTERX_PROT, strlen(CMD_LTECX_LTERX_PROT)) == 0) {
+		int skip = strlen(CMD_LTECX_LTERX_PROT) + 3;
+		bytes_written = wl_android_set_lterx_protection(net, (const char*)command+skip);
+	}
+	else if (strnicmp(command, CMD_LTECX_LTETX_ADV, strlen(CMD_LTECX_LTETX_ADV)) == 0) {
+		int skip = strlen(CMD_LTECX_LTETX_ADV) + 3;
+		bytes_written = wl_android_set_ltetx_adv(net, (const char*)command+skip);
 	}
 #endif /* SUPPORT_LTECX */
 #endif /* CUSTOMER_HW4 */
 	else if (strnicmp(command, CMD_SETROAMMODE, strlen(CMD_SETROAMMODE)) == 0)
 		bytes_written = wl_android_set_roam_mode(net, command, priv_cmd.total_len);
-	else if (strnicmp(command, CMD_SETIBSSBEACONOUIDATA,
-		strlen(CMD_SETIBSSBEACONOUIDATA)) == 0)
-		bytes_written = wl_android_set_ibss_beacon_ouidata(net, command,
-			priv_cmd.total_len);
 	else {
 		DHD_ERROR(("Unknown PRIVATE command %s - ignored\n", command));
 		snprintf(command, 3, "OK");
