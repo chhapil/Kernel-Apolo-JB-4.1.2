@@ -2039,10 +2039,12 @@ static irqreturn_t mxt224_irq_thread(int irq, void *ptr)
 				}
 			}
 		}
-#if 0 
+
 	#ifdef CLEAR_MEDIAN_FILTER_ERROR
 			if ((msg[0] == 18) && (data->family_id == 0x81)) {
-				if ((msg[4] & 0x5) == 0x5) {
+				bool ta_status = 0;
+				data->read_ta_status(&ta_status);
+				if (((msg[4] & 0x5) == 0x5) && (ta_status)) {
 					printk(KERN_ERR
 					       "[TSP] median filter state error!!!\n");
 					median_err_setting();
@@ -2069,7 +2071,7 @@ static irqreturn_t mxt224_irq_thread(int irq, void *ptr)
 				}
 			}
 	#endif
-#endif
+
 		if (msg[0] > 1 && msg[0] < 12) {
 
 			if ((copy_data->touch_is_pressed_arr[msg[0] - 2] == 1)
