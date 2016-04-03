@@ -138,3 +138,4 @@ scripts/
 lib/
 arch/arm/boot/Image
 *.lds
+usr/
